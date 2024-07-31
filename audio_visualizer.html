@@ -1,0 +1,264 @@
+<html>
+
+<head>
+  <title>Audio Visualiser</title>
+  <link href="https://fonts.googleapis.com/css?family=Saira" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style_spotify.css">
+  <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./build/three.module.js"
+      }
+    }
+  </script>
+</head>
+
+<style>
+  body {
+    margin: 0;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<body>
+  <link rel="shortcut icon" href="#">
+
+
+  <style>
+    body {
+      font-family: Monospace;
+      background-color: #000;
+      color: #fff;
+      margin: 0px;
+      overflow: hidden;
+    }
+
+    #info {
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      text-align: center;
+    }
+  </style>
+
+  <div id="info">
+    <p></p>
+  </div>
+
+  <div id="content">
+
+    <label for="thefile" class="file"> Choose an audio file
+      <input type="file" id="thefile" accept="audio/*" />
+    </label>
+    
+    <audio id="audio" controls></audio>
+
+    <div id="out"></div>
+  </div>
+  <!-- <div>
+    <button onclick="authorizeSpotify()">Connect to Spotify</button>
+    <button onclick="getUserPlaylists()">Get User Playlists</button>
+
+    <div id="playlists"></div>
+    <input type="text" id="searchInput" placeholder="Enter a track name">
+    <button onclick="searchTrack()">Search Track</button>
+    <div id="searchResults"></div>
+    <div id="player"></div>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    <script src="spotify.js"></script>
+  </div> -->
+  
+
+
+  <script type="module">
+
+    /* 
+      ------------------------Import packages-----------------------
+    */
+    import * as THREE from 'three';
+    import { createNoise2D } from './node_modules/simplex-noise/dist/esm/simplex-noise.js';
+    import { createNoise3D } from './node_modules/simplex-noise/dist/esm/simplex-noise.js';
+    import { OrbitControls } from './build/controls/OrbitControls.js';
+    import { GUI } from './build/gui/lil-gui.module.min.js';
+    import * as Theme1 from './theme1.js'
+    import * as Theme2 from './theme2.js'
+    import * as Theme3 from './theme3.js'
+    import * as Util from './util.js'
+    
+    /* 
+      ------------------------Local variables-----------------------
+    */
+    var panel_settings = {
+        'Theme No.': 1,
+        'Sensitivity (FFT size)': 2048
+      };
+    var sensitivity = 2048;
+    var analyser;
+    var scene;
+    var bufferLength;
+    var dataArray;
+    var renderer;
+    var current_theme = 1;  // default theme is 1
+    var previous_theme = current_theme;
+
+    
+
+    /* 
+      ------------------------Functions-----------------------
+    */
+    var vizInit = function () {
+
+      var file1 = document.getElementById("thefile");
+      //var audio1 = document.getElementById("audio");
+      var fileLabel = document.querySelector("label.file");
+      var src = null;
+      
+      
+      
+      document.onload = function (e) {
+        console.log(e);
+        audio.play();
+        Theme1.play();
+      }
+
+      file1.onchange = function () {
+        fileLabel.classList.add('normal');
+        audio.classList.add('active');
+        var context = new AudioContext();
+        var files = this.files;
+        
+        audio.src = URL.createObjectURL(files[0]);
+        audio.load();
+        audio.play();
+        if(src == null)
+        {
+          CreatePanel();
+          src = context.createMediaElementSource(audio);
+          analyser = context.createAnalyser();
+          src.connect(analyser);
+          analyser.connect(context.destination);
+          analyser.fftSize = sensitivity;
+          bufferLength = analyser.frequencyBinCount;
+          dataArray = new Uint8Array(2048); // change the array size to the max possible
+
+          scene = new THREE.Scene();
+          renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        Util.removeAllObjectsFromScene(scene);
+        if (current_theme == 1)
+        {
+          console.log('theme 1');
+          Theme1.play(scene, renderer, analyser, dataArray);
+        }
+        if (current_theme == 2)
+        {
+          console.log('theme 2');
+          Theme2.play(scene, renderer, analyser, dataArray);
+        }
+        if (current_theme == 3)
+        {
+          console.log('theme 3');
+          Theme3.play(scene, renderer, analyser, dataArray);
+        }
+        render();
+      }
+    }
+
+    function render()
+    {
+      if (current_theme == 1)
+      {
+        if (previous_theme != 1)
+        {
+          Util.removeAllObjectsFromScene(scene);
+          console.log('theme 1');
+          Theme1.play(scene, renderer, analyser, dataArray);
+          previous_theme = current_theme;
+        }
+        Theme1.render();
+      }
+      if (current_theme == 2)
+      {
+        if (previous_theme != 2)
+        {
+          Util.removeAllObjectsFromScene(scene);
+          console.log('theme 2');
+          Theme2.play(scene, renderer, analyser, dataArray);
+          previous_theme = current_theme;
+        }
+        Theme2.render();
+      }
+      if (current_theme == 3)
+      {
+        if (previous_theme != 3)
+        {
+          Util.removeAllObjectsFromScene(scene);
+          console.log('theme 3');
+          Theme3.play(scene, renderer, analyser, dataArray);
+          previous_theme = current_theme;
+        }
+        Theme3.render();
+      }
+      requestAnimationFrame(render);
+    }
+    
+    function CreatePanel()
+    {
+      const panel = new GUI( { width: 310 } );
+      
+      const folder1 = panel.addFolder( 'Theme setting' );
+      const folder2 = panel.addFolder('Effect setting');
+      
+      folder1.add( panel_settings, 'Theme No.', 1, 3, 1 ).listen().onChange( changeTheme );
+      folder1.open();
+
+      folder2.add(panel_settings, 'Sensitivity (FFT size)', 256, 2048, 256).listen().onChange( changeSensitivity );
+      folder2.open();
+    }
+
+    var changeTheme = function(theme)
+    {
+      current_theme = theme;
+    }
+
+    var changeSensitivity = function(sen)
+    {
+      if (sen != 256 && sen != 512 && sen != 1024 && sen != 2048)
+      {
+        if (sen < 1024)
+          panel_settings['Sensitivity (FFT size)'] = 512;
+        else if (sen <= 1536)
+          panel_settings['Sensitivity (FFT size)'] = 1024;
+        else
+          panel_settings['Sensitivity (FFT size)'] = 2048;
+        
+      }
+      sensitivity = panel_settings['Sensitivity (FFT size)'];
+      analyser.fftSize = sensitivity;
+
+      // scene.remove(freqBins);
+      // freqBins = makeFreqBins();
+      // freqBins.position.set(freqBinsPosition.x.value, freqBinsPosition.y.value, freqBinsPosition.z.value);
+      // scene.add(freqBins);
+    }
+
+    
+
+    /* 
+      ------------------------Routine-----------------------
+    */
+    window.onload = vizInit();
+    document.body.addEventListener('touchend', function (ev) { context.resume(); });
+
+  </script>
+</body>
+
+</html>
